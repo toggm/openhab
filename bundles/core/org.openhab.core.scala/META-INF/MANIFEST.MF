@@ -11,7 +11,6 @@ Bundle-License: http://www.eclipse.org/legal/epl-v10.html
 Bundle-Description: This is the rule support of the open Home Aut
  omation Bus (openHAB)
 Import-Package: org.apache.commons.lang,
- org.openhab.core.scala.actions,
  org.openhab.core.events,
  org.openhab.core.items,
  org.openhab.core.library.items,
@@ -34,3 +33,6 @@ Bundle-ClassPath: .,
  lib/hammurabi_2.11.0-M3-0.1.jar
 Require-Bundle: org.eclipse.jdt.core
 Export-Package: 
+ hammurabi,
+ hammurabi.util,
+ org.openhab.core.scala.internal;x-internal:=true

@@ -30,7 +30,8 @@ Bundle-DocURL: http://www.openhab.org
 Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Service-Component: OSGI-INF/ruleservice.xml
 Bundle-ClassPath: .,
- lib/hammurabi_2.11.0-M3-0.1.jar
+ lib/hammurabi_2.11.0-M3-0.1.jar,
+ lib/scala-compiler.jar
 Require-Bundle: org.eclipse.jdt.core
 Export-Package: 
  hammurabi,

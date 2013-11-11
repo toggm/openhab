@@ -31,7 +31,9 @@ Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Service-Component: OSGI-INF/ruleservice.xml
 Bundle-ClassPath: .,
  lib/hammurabi_2.11.0-M3-0.1.jar,
- lib/scala-compiler.jar
+ lib/scala-compiler.jar,
+ lib/scala-library.jar,
+ lib/openhab-scala-lib_2.10-1.0.jar
 Require-Bundle: org.eclipse.jdt.core
 Export-Package: 
  hammurabi,

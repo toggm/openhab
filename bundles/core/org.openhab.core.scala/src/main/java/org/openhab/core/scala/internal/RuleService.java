@@ -10,27 +10,45 @@ package org.openhab.core.scala.internal;
 
 import static org.openhab.core.events.EventConstants.TOPIC_PREFIX;
 import static org.openhab.core.events.EventConstants.TOPIC_SEPERATOR;
+import hammurabi.RuleEngine;
+import hammurabi.WorkingMemory;
 
+import java.io.File;
+import java.io.FilenameFilter;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.Collection;
 import java.util.Dictionary;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import org.apache.commons.lang.StringUtils;
+import org.openhab.core.events.EventPublisher;
 import org.openhab.core.items.GenericItem;
 import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.items.ItemRegistryChangeListener;
 import org.openhab.core.items.StateChangeListener;
+import org.openhab.core.scala.RuleEngineExecutor;
+import org.openhab.core.scala.model.Changeset;
+import org.openhab.core.scala.model.RuleEngineListener;
 import org.openhab.core.service.AbstractActiveService;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.EventType;
 import org.openhab.core.types.State;
+import org.openhab.core.types.TypeParser;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
 import org.osgi.service.event.Event;
 import org.osgi.service.event.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import scala.Option;
+import scala.Tuple2;
 
 public class RuleService extends AbstractActiveService implements
 		ManagedService, EventHandler, ItemRegistryChangeListener,
@@ -43,8 +61,24 @@ public class RuleService extends AbstractActiveService implements
 
 	private long refreshInterval = 200;
 
+	private WorkingMemory workingMemory;
+	
+	private TimerTask scanConfigurationFilesTask;
+	
+	private Timer timer;
+	
+	private Map<String, Long> configTimestamps = new HashMap<String, Long>();
+	
+	private Map<String, RuleEngineExecutor> ruleEngines = new HashMap<String, RuleEngineExecutor>();
+	
 	public void activate() {
-
+		
+		//initialize hammurabi
+		workingMemory = new WorkingMemory();	
+		
+		// read all rule files
+		timer = new Timer();
+				
 		// now add all registered items to the session
 		if (itemRegistry != null) {
 			for (Item item : itemRegistry.getItems()) {
@@ -87,27 +121,24 @@ public class RuleService extends AbstractActiveService implements
 	 */
 	public void allItemsChanged(Collection<String> oldItemNames) {
 
-		// first remove all previous items from the session
-		for (String oldItemName : oldItemNames) {
-			internalItemRemoved(oldItemName);
-		}
-
-		// then add the current ones again
 		Collection<Item> items = itemRegistry.getItems();
 		for (Item item : items) {
-			internalItemAdded(item);
-		}
+			if (oldItemNames.contains(item.getName())) {
+				// first remove all previous items from the session
+				internalItemRemoved(item);				
 
+				// then add the current ones again
+				internalItemAdded(item);
+			}
+		}
 	}
 
 	private void internalItemAdded(Item item) {
-		// TODO Auto-generated method stub
-
+		workingMemory.$plus(item);
 	}
 
-	private void internalItemRemoved(String oldItemName) {
-		// TODO Auto-generated method stub
-
+	private void internalItemRemoved(Item item) {		
+		workingMemory.$minus(item);
 	}
 
 	/**
@@ -115,14 +146,13 @@ public class RuleService extends AbstractActiveService implements
 	 */
 	public void itemAdded(Item item) {
 		internalItemAdded(item);
-
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	public void itemRemoved(Item item) {
-		internalItemRemoved(item.getName());
+		internalItemRemoved(item);
 		if (item instanceof GenericItem) {
 			GenericItem genericItem = (GenericItem) item;
 			genericItem.removeStateChangeListener(this);
@@ -192,6 +222,95 @@ public class RuleService extends AbstractActiveService implements
 			Command command = (Command) event.getProperty("command");
 			if (command != null)
 				receiveCommand(itemName, command);
+		}
+	}
+	
+
+	private void scanConfiguration(File config) {
+		String name = config.getName();
+		if (configTimestamps.containsKey(name)) {
+			//check modification timestamp
+			if (configTimestamps.get(name) < config.lastModified()) {
+				//changed, rescan and reapply rules
+				
+				//remove from current cache
+				ruleEngines.remove(name);
+				
+				//readd
+				scanConfigurationFile(config);
+			}
+		}
+		else {
+			//new config file, scan and apply rules
+			scanConfigurationFile(config);
+		}
+	}
+	
+	private void scanConfigurationFile(File config) {
+		//compile scala file
+		RuleEngineExecutor ruleEngine = null;
+		
+		//add to rule engines cache
+		ruleEngines.put(config.getName(), ruleEngine);
+		
+		//apply workingmemory
+		applyOn(ruleEngine);
+	}
+	
+	private void applyOn(RuleEngineExecutor ruleEngine) {
+		
+		
+		//apply workingmemory and handle results
+		ruleEngine.execOn(workingMemory, new RuleEngineListener() {
+			
+			public void updated(Item item, State state) {
+				ItemRegistry registry = (ItemRegistry) RulesActivator.itemRegistryTracker.getService();
+				EventPublisher publisher = (EventPublisher) RulesActivator.eventPublisherTracker.getService();
+				if(publisher!=null && registry!=null) {
+					publisher.postUpdate(item.getName(), state);					
+				}
+			}
+			
+			public void send(Item item, Command cmd) {
+				ItemRegistry registry = (ItemRegistry) RulesActivator.itemRegistryTracker.getService();
+				EventPublisher publisher = (EventPublisher) RulesActivator.eventPublisherTracker.getService();
+				
+				if(publisher!=null && registry!=null) {
+					publisher.sendCommand(item.getName(), cmd);				
+				}
+			}
+		});		
+	}
+	
+	private class ScanConfigurationFilesTask extends TimerTask {
+
+		private String resourceBase;
+
+		public ScanConfigurationFilesTask(String resourceBase) {
+			this.resourceBase = resourceBase;
+		}
+		
+		@Override
+		public void run() {
+			URL resource = getClass().getResource(resourceBase);
+			if (resource != null) {
+				File file;
+				try {
+					file = new File(resource.toURI());
+					File[] files = file.listFiles(new FilenameFilter() {
+						
+						public boolean accept(File file, String arg1) {
+							return file.getName().endsWith(".scala");
+						}
+					});
+					for (File config: files) {
+						scanConfiguration(config);
+					}
+				} catch (URISyntaxException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}				
 		}
 	}
 }

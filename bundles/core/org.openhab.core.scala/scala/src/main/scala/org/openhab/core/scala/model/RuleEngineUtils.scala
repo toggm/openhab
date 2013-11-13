@@ -6,7 +6,7 @@ import org.openhab.core.types.Command
 import scala.collection.mutable.MutableList
 import scala.collection.mutable.ConcurrentMap
 
-object Changeset {
+object BusEvent {
    
   var ruleEngineListener: Option[RuleEngineListener] = None
   

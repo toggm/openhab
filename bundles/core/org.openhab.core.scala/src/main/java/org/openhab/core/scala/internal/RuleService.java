@@ -10,16 +10,26 @@ package org.openhab.core.scala.internal;
 
 import static org.openhab.core.events.EventConstants.TOPIC_PREFIX;
 import static org.openhab.core.events.EventConstants.TOPIC_SEPERATOR;
+import hammurabi.Rule;
 import hammurabi.RuleEngine;
 import hammurabi.WorkingMemory;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Dictionary;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -33,7 +43,7 @@ import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.items.ItemRegistryChangeListener;
 import org.openhab.core.items.StateChangeListener;
 import org.openhab.core.scala.RuleEngineExecutor;
-import org.openhab.core.scala.model.Changeset;
+import org.openhab.core.scala.RuleSetFactory;
 import org.openhab.core.scala.model.RuleEngineListener;
 import org.openhab.core.service.AbstractActiveService;
 import org.openhab.core.types.Command;
@@ -49,6 +59,21 @@ import org.slf4j.LoggerFactory;
 
 import scala.Option;
 import scala.Tuple2;
+import scala.collection.Iterator;
+import scala.collection.JavaConverters;
+import scala.collection.Traversable;
+import scala.collection.convert.Decorators.AsScala;
+import scala.collection.immutable.Set;
+import scala.collection.mutable.Buffer;
+import scala.collection.mutable.HashSet;
+import scala.collection.mutable.LinkedList;
+import scala.reflect.io.AbstractFile;
+import scala.tools.ant.sabbus.Compiler;
+import scala.tools.nsc.Global;
+import scala.tools.nsc.Global.Run;
+import scala.tools.nsc.Settings;
+import scala.tools.nsc.reporters.ConsoleReporter;
+import scala.tools.nsc.reporters.Reporter;
 
 public class RuleService extends AbstractActiveService implements
 		ManagedService, EventHandler, ItemRegistryChangeListener,
@@ -69,7 +94,9 @@ public class RuleService extends AbstractActiveService implements
 	
 	private Map<String, Long> configTimestamps = new HashMap<String, Long>();
 	
-	private Map<String, RuleEngineExecutor> ruleEngines = new HashMap<String, RuleEngineExecutor>();
+	private RuleEngineExecutor ruleEngine = null;
+	
+	private List<Item> eventQueue = Collections.synchronizedList(new ArrayList<Item>());
 	
 	public void activate() {
 		
@@ -163,20 +190,20 @@ public class RuleService extends AbstractActiveService implements
 	 * {@inheritDoc}
 	 */
 	public void stateChanged(Item item, State oldState, State newState) {
-		//eventQueue.add(new StateEvent(item, oldState, newState));
+		eventQueue.add(item);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	public void stateUpdated(Item item, State state) {
-		//eventQueue.add(new StateEvent(item, state));
+		eventQueue.add(item);
 	}
 
 	public void receiveCommand(String itemName, Command command) {
 		try {
-			Item item = itemRegistry.getItem(itemName);
-			//TODO eventQueue.add(new CommandEvent(item, command));
+			Item item = itemRegistry.getItem(itemName);			
+			eventQueue.add(item);
 		} catch (ItemNotFoundException e) {
 		}
 	}
@@ -188,10 +215,19 @@ public class RuleService extends AbstractActiveService implements
 	protected synchronized void execute() {
 		// remove all previous events from the session
 		
-//		ArrayList<RuleEvent> clonedQueue = new ArrayList<RuleEvent>(eventQueue);
-//		eventQueue.clear();
+		ArrayList<Item> clonedQueue = new ArrayList<Item>(eventQueue);
+		eventQueue.clear();
 	
-
+		//push modified items into workingmemory
+		for(Item item: clonedQueue) {
+			workingMemory.$minus(item);
+			workingMemory.$plus(item);
+		}
+		
+		if (clonedQueue.size() > 0) {
+			//reevaluate rules
+			applyOn(ruleEngine);
+		}
 	}
 
 	@Override
@@ -223,39 +259,7 @@ public class RuleService extends AbstractActiveService implements
 			if (command != null)
 				receiveCommand(itemName, command);
 		}
-	}
-	
-
-	private void scanConfiguration(File config) {
-		String name = config.getName();
-		if (configTimestamps.containsKey(name)) {
-			//check modification timestamp
-			if (configTimestamps.get(name) < config.lastModified()) {
-				//changed, rescan and reapply rules
-				
-				//remove from current cache
-				ruleEngines.remove(name);
-				
-				//readd
-				scanConfigurationFile(config);
-			}
-		}
-		else {
-			//new config file, scan and apply rules
-			scanConfigurationFile(config);
-		}
-	}
-	
-	private void scanConfigurationFile(File config) {
-		//compile scala file
-		RuleEngineExecutor ruleEngine = null;
-		
-		//add to rule engines cache
-		ruleEngines.put(config.getName(), ruleEngine);
-		
-		//apply workingmemory
-		applyOn(ruleEngine);
-	}
+	}	
 	
 	private void applyOn(RuleEngineExecutor ruleEngine) {
 		
@@ -282,6 +286,117 @@ public class RuleService extends AbstractActiveService implements
 		});		
 	}
 	
+	/**
+	 * find and load ruleset factory
+	 * @param classes
+	 * @param libs
+	 * @return
+	 */
+	private RuleSetFactory loadRuleSetFactory(URL[] classes, URL libs) {
+		//create classloader for ruleset factory
+		URLClassLoader urlClassLoader = new URLClassLoader(classes, new URLClassLoader(new URL[]{libs}));
+		
+		for (URL url: classes) {
+			Class<?> loadedClass;
+			try {
+				loadedClass = urlClassLoader.loadClass(url.getFile());
+				if (RuleSetFactory.class.isAssignableFrom(loadedClass)) {
+					//instanciate new rulesetfactory
+					return (RuleSetFactory) loadedClass.newInstance();
+				}
+			} catch (ClassNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InstantiationException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IllegalAccessException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * Recompile scala files using 
+	 * @param files
+	 * @param libs
+	 * @param outputDir
+	 * @return list of compile resources
+	 */
+	private URL[] compileScalaFiles(File[] files, URL libs, String outputDir) {
+		
+		//set output directory
+		Settings currentSettings = new Settings();
+		currentSettings.outdir().value_$eq(outputDir);
+		
+		Reporter reporter = new ConsoleReporter(currentSettings);		
+		Global global = new Global(currentSettings, reporter);
+		Run run = global.new Run();		
+		
+		List<String> filenames = new ArrayList<String>();
+		for (File file: files) {
+			filenames.add(file.getAbsolutePath());
+		}
+		
+		AsScala<Buffer<String>> scalaBuffer = JavaConverters.asScalaBufferConverter(filenames);		
+		run.compile(scalaBuffer.asScala().toList());
+		
+		if (reporter.hasErrors()) {
+			return null;
+		}		
+		
+		HashSet<String> compiledFiles = run.compiledFiles();
+		List<Object> asJava = JavaConverters.bufferAsJavaListConverter(compiledFiles.toBuffer()).asJava();
+		
+		List<URL> compiledResources = new ArrayList<URL>();
+		for (Object obj: asJava) {
+			try {
+				compiledResources.add(new File(obj.toString()).toURI().toURL());
+			} catch (MalformedURLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return compiledResources.toArray(new URL[compiledResources.size()]);
+	}
+	
+	/**
+	 * Check if any of the provided files changes since last compilation
+	 * @param files
+	 * @return
+	 */
+	private boolean scalaFilesModified(File[] files) {
+		for (File config: files) {
+			String name = config.getName();
+			if (configTimestamps.containsKey(name)) {
+				//check modification timestamp
+				if (configTimestamps.get(name) < config.lastModified()) {
+					//changed, rescan and reapply rules
+					
+					return true;
+				}
+			}
+			else {
+				//new config file, scan and apply rules
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	/**
+	 * @param files
+	 */
+	private void cacheFileModificationDate(File[] files) {
+		for (File config: files) {
+			configTimestamps.put(config.getName(), config.lastModified());
+		}
+	}
+	
 	private class ScanConfigurationFilesTask extends TimerTask {
 
 		private String resourceBase;
@@ -303,10 +418,42 @@ public class RuleService extends AbstractActiveService implements
 							return file.getName().endsWith(".scala");
 						}
 					});
-					for (File config: files) {
-						scanConfiguration(config);
+					
+					boolean modified = scalaFilesModified(files);
+					URL libs = getClass().getResource(resourceBase+"/lib");							
+					
+					if (modified) {
+						
+						File outputPath = File.createTempFile("openhab", "scala");
+						outputPath.mkdir();
+						outputPath.deleteOnExit();
+						
+						//recompile all files
+						URL[] compileScalaFiles = compileScalaFiles(files, libs, outputPath.getAbsolutePath());
+						
+						//cache new modification date
+						cacheFileModificationDate(files);
+						
+						//disable ruleengine
+						ruleEngine = null;
+						
+						RuleSetFactory factory = loadRuleSetFactory(compileScalaFiles, libs);
+						if (factory != null) {
+							//replace old uleengineexecutor
+							Set<Rule> rules = factory.generateRuleSet();
+							if (rules != null) {								
+								ruleEngine = new RuleEngineExecutor(new RuleEngine(rules));
+								
+								//reevaluate ruleengine 
+								applyOn(ruleEngine);
+							}
+						}
 					}
+					
 				} catch (URISyntaxException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}

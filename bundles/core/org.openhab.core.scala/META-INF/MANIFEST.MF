@@ -33,7 +33,8 @@ Bundle-ClassPath: .,
  lib/hammurabi_2.11.0-M3-0.1.jar,
  lib/scala-compiler.jar,
  lib/scala-library.jar,
- lib/openhab-scala-lib_2.10-1.0.jar
+ lib/openhab-scala-lib_2.10-1.0.jar,
+ lib/scala-reflect.jar
 Require-Bundle: org.eclipse.jdt.core
 Export-Package: 
  hammurabi,

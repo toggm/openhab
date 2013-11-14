@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Tests for openHAB Scala Rule Engine
+Bundle-SymbolicName: org.openhab.core.scala.test
+Bundle-Version: 1.4.0.qualifier
+Bundle-Vendor: openHAB.org
+Fragment-Host: org.openhab.core.scala
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Require-Bundle: org.junit4;bundle-version="4.8.1"

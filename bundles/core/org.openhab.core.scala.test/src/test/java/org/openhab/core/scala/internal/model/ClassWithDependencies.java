@@ -12,6 +12,11 @@ public class ClassWithDependencies implements Model {
 		workingMemory = new WorkingMemory();
 	}
 
+	@Override
+	public void test() {
+		getWorkingMemory();
+	}
+
 	public WorkingMemory getWorkingMemory() {
 		return workingMemory;
 	}

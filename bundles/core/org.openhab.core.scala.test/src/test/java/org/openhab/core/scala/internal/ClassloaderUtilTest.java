@@ -29,7 +29,10 @@ public class ClassloaderUtilTest {
 
 		// instanciate the found classes
 		for (Class<? extends Model> clazz : foundClasses) {
-			clazz.newInstance();
+			Model model = clazz.newInstance();
+
+			// and execute method call
+			model.test();
 		}
 	}
 

@@ -34,7 +34,9 @@ Bundle-ClassPath: .,
  lib/scala-compiler.jar,
  lib/scala-library.jar,
  lib/openhab-scala-lib_2.10-1.0.jar,
- lib/scala-reflect.jar
+ lib/scala-reflect.jar,
+ lib/commons-logging-1.1.3.jar,
+ lib/commons-vfs2-2.0.jar
 Require-Bundle: org.eclipse.jdt.core
 Export-Package: 
  hammurabi,

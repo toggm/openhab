@@ -31,7 +31,6 @@ import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.items.ItemRegistryChangeListener;
 import org.openhab.core.items.StateChangeListener;
-import org.openhab.core.scala.RuleEngineExecutor;
 import org.openhab.core.service.AbstractActiveService;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.EventType;
@@ -59,16 +58,13 @@ public class RuleService extends AbstractActiveService implements
 	private static final Logger logger = LoggerFactory
 			.getLogger(RuleService.class);
 
-	private HammurabiAdapter scalaRuleEngineAdapter;
+	private RuleEngineAdapter scalaRuleEngineAdapter;
 
 	private ItemRegistry itemRegistry;
 
-	private ScalaRuleCompiler scalaRuleCompiler;
-
 	public void activate() {
 
-		scalaRuleEngineAdapter = new HammurabiAdapter();
-		scalaRuleCompiler = new ScalaRuleCompiler(CONFIGURATION_BASE);
+		scalaRuleEngineAdapter = new HammurabiAdapter(CONFIGURATION_BASE);
 		boolean successFully = scalaRuleEngineAdapter.initialize();
 
 		// now add all registered items to the session
@@ -239,22 +235,14 @@ public class RuleService extends AbstractActiveService implements
 	}
 
 	public void fileChanged(FileChangeEvent event) throws Exception {
-		recompileRules();
+		scalaRuleEngineAdapter.sourceFileChanged();
 	}
 
 	public void fileCreated(FileChangeEvent event) throws Exception {
-		recompileRules();
+		scalaRuleEngineAdapter.sourceFileChanged();
 	}
 
 	public void fileDeleted(FileChangeEvent event) throws Exception {
-		recompileRules();
-	}
-
-	private void recompileRules() {
-		List<RuleEngineExecutor> newRuleEngines = scalaRuleCompiler
-				.recompileRules();
-
-		// reinject new rules
-		scalaRuleEngineAdapter.setRuleEngines(newRuleEngines);
+		scalaRuleEngineAdapter.sourceFileChanged();
 	}
 }

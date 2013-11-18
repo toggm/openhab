@@ -1,9 +1,11 @@
 package org.openhab.core.scala.internal;
 
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertTrue;
+
 import java.io.File;
 import java.io.IOException;
-
-import junit.framework.Assert;
+import java.util.Arrays;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -28,10 +30,17 @@ public class ScalaUtilTest {
 
 		File[] listFiles = outputDir.listFiles();
 
-		Assert.assertTrue(success);
-		Assert.assertEquals(2, listFiles.length);
-		Assert.assertEquals("SimpleScalaModel.class", listFiles[0]);
-		Assert.assertEquals("ScalaModelWithDependencies.class", listFiles[1]);
+		String[] expectedFilenames = new String[] {
+				"ScalaModelWithDependencies$class.class",
+				"ScalaModelWithDependencies.class",
+				"SimpleScalaModel$class.class", "SimpleScalaModel.class" };
+
+		assertTrue(success);
+		assertEquals(4, listFiles.length);
+
+		for (File file : listFiles) {
+			assertTrue(Arrays.binarySearch(expectedFilenames, file.getName()) >= 0);
+		}
 
 		outputDir.delete();
 	}

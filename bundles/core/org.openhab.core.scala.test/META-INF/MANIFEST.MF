@@ -7,3 +7,5 @@ Bundle-Vendor: openHAB.org
 Fragment-Host: org.openhab.core.scala
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Require-Bundle: org.junit4;bundle-version="4.8.1"
+Bundle-ClassPath: lib/mockito-all-1.9.5.jar,
+ .

@@ -20,7 +20,7 @@ public class ClassloaderUtilTest {
 		String classUrl = "org/openhab/core/scala/internal/model/SimpleClassWithoutDependencies.class";
 		String classUrl2 = "org/openhab/core/scala/internal/model/ClassWithDependencies.class";
 
-		Class<? extends Model>[] foundClasses = ClassloaderUtil
+		Class<? extends Model>[] foundClasses = new ClassloaderUtil()
 				.loadImplementationsFromFiles(Model.class, baseUrl,
 						new String[] { classUrl, classUrl2 });
 
@@ -43,7 +43,7 @@ public class ClassloaderUtilTest {
 		baseUrl = baseUrl.substring(5);
 		String classUrl = "org/openhab/core/scala/internal/model/ClassNotExists.class";
 
-		Class<? extends Model>[] foundClasses = ClassloaderUtil
+		Class<? extends Model>[] foundClasses = new ClassloaderUtil()
 				.loadImplementationsFromFiles(Model.class, baseUrl,
 						new String[] { classUrl });
 

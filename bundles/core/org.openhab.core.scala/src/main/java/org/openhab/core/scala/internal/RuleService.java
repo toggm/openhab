@@ -64,8 +64,10 @@ public class RuleService extends AbstractActiveService implements
 
 	public void activate() {
 
-		scalaRuleEngineAdapter = new HammurabiAdapter(CONFIGURATION_BASE);
-		boolean successFully = scalaRuleEngineAdapter.initialize();
+		scalaRuleEngineAdapter = new HammurabiAdapter(CONFIGURATION_BASE,
+				new ScalaCompiler(), new ClassloaderUtil(),
+				new RuleEngineListenerImpl());
+		boolean successFully = true;
 
 		// now add all registered items to the session
 		if (itemRegistry != null) {

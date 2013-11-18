@@ -13,7 +13,7 @@ import scala.tools.nsc.Settings;
 import scala.tools.nsc.reporters.ConsoleReporter;
 import scala.tools.nsc.reporters.Reporter;
 
-public class ScalaUtil {
+public class ScalaCompiler {
 	/**
 	 * Recompile scala files using
 	 * 
@@ -22,8 +22,7 @@ public class ScalaUtil {
 	 * @param outputDir
 	 * @return list of compile resources
 	 */
-	public static boolean compileScalaFiles(File[] files, File[] libs,
-			File outputDir) {
+	public boolean compileScalaFiles(File[] files, File[] libs, File outputDir) {
 
 		// set output directory
 		Settings currentSettings = new Settings();

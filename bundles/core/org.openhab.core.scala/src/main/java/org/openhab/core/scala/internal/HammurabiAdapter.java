@@ -13,14 +13,10 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.openhab.core.events.EventPublisher;
 import org.openhab.core.items.Item;
-import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.scala.RuleEngineExecutor;
 import org.openhab.core.scala.RuleSetFactory;
 import org.openhab.core.scala.model.RuleEngineListener;
-import org.openhab.core.types.Command;
-import org.openhab.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,36 +33,56 @@ public class HammurabiAdapter implements RuleEngineAdapter {
 
 	private String configurationBase;
 
-	public HammurabiAdapter(String configurationBase) {
-		this.configurationBase = configurationBase;
-	}
+	private ScalaCompiler compiler;
 
-	/* (non-Javadoc)
-	 * @see org.openhab.core.scala.internal.RuleEngineAdapter#initialize()
-	 */
-	public boolean initialize() {
+	private ClassloaderUtil classloaderUtil;
+
+	private RuleEngineListener listener;
+
+	public HammurabiAdapter(String configurationBase, ScalaCompiler compiler,
+			ClassloaderUtil classloaderUtil, RuleEngineListener listener) {
+		this.configurationBase = configurationBase;
+		this.compiler = compiler;
+		this.classloaderUtil = classloaderUtil;
+		this.listener = listener;
 
 		// initialize hammurabi
 		workingMemory = new WorkingMemory();
 
-		return true;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.openhab.core.scala.internal.RuleEngineAdapter#itemRemoved(org.openhab.core.items.Item)
+	/**
+	 * @return
+	 */
+	public WorkingMemory getWorkingMemory() {
+		return workingMemory;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.openhab.core.scala.internal.RuleEngineAdapter#itemRemoved(org.openhab
+	 * .core.items.Item)
 	 */
 	public void itemRemoved(Item item) {
 		workingMemory.$minus(item);
 	}
 
-	/* (non-Javadoc)
-	 * @see org.openhab.core.scala.internal.RuleEngineAdapter#itemAdded(org.openhab.core.items.Item)
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.openhab.core.scala.internal.RuleEngineAdapter#itemAdded(org.openhab
+	 * .core.items.Item)
 	 */
 	public void itemAdded(Item item) {
 		workingMemory.$plus(item);
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see org.openhab.core.scala.internal.RuleEngineAdapter#reevaluateRules()
 	 */
 	public void reevaluateRules() {
@@ -80,29 +96,7 @@ public class HammurabiAdapter implements RuleEngineAdapter {
 	private void applyOn(RuleEngineExecutor ruleEngine) {
 
 		// apply workingmemory and handle results
-		ruleEngine.execOn(workingMemory, new RuleEngineListener() {
-
-			public void updated(Item item, State state) {
-				ItemRegistry registry = (ItemRegistry) RulesActivator.itemRegistryTracker
-						.getService();
-				EventPublisher publisher = (EventPublisher) RulesActivator.eventPublisherTracker
-						.getService();
-				if (publisher != null && registry != null) {
-					publisher.postUpdate(item.getName(), state);
-				}
-			}
-
-			public void send(Item item, Command cmd) {
-				ItemRegistry registry = (ItemRegistry) RulesActivator.itemRegistryTracker
-						.getService();
-				EventPublisher publisher = (EventPublisher) RulesActivator.eventPublisherTracker
-						.getService();
-
-				if (publisher != null && registry != null) {
-					publisher.sendCommand(item.getName(), cmd);
-				}
-			}
-		});
+		ruleEngine.execOn(workingMemory, listener);
 	}
 
 	protected void setRuleEngines(List<RuleEngineExecutor> newRuleEngines) {
@@ -112,20 +106,27 @@ public class HammurabiAdapter implements RuleEngineAdapter {
 		// add all new ruleenignes
 		ruleEngines.addAll(newRuleEngines);
 
-		// reevaluate
-		reevaluateRules();
 	}
 
-	/* (non-Javadoc)
-	 * @see org.openhab.core.scala.internal.RuleEngineAdapter#sourceFileChanged()
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.openhab.core.scala.internal.RuleEngineAdapter#sourceFileChanged()
 	 */
 	public void sourceFileChanged() {
 		List<RuleEngineExecutor> newRuleEngines = recompileRules();
 
 		// reinject new rules
 		setRuleEngines(newRuleEngines);
+
+		// reevaluate
+		reevaluateRules();
 	}
 
+	/**
+	 * @return
+	 */
 	protected List<RuleEngineExecutor> recompileRules() {
 		List<RuleEngineExecutor> ruleEngines = new ArrayList<RuleEngineExecutor>();
 		try {
@@ -145,7 +146,7 @@ public class HammurabiAdapter implements RuleEngineAdapter {
 			File outputPath = FileUtil.createTempDir("openhab", "scala");
 
 			// recompile all files
-			boolean success = ScalaUtil.compileScalaFiles(scalaFiles, libs,
+			boolean success = compiler.compileScalaFiles(scalaFiles, libs,
 					outputPath);
 			if (!success) {
 				// stop
@@ -158,7 +159,7 @@ public class HammurabiAdapter implements RuleEngineAdapter {
 				filenames[i] = compileScalaFiles[i].getName();
 			}
 
-			Class<? extends RuleSetFactory>[] foundRuleSetFactories = ClassloaderUtil
+			Class<? extends RuleSetFactory>[] foundRuleSetFactories = classloaderUtil
 					.loadImplementationsFromFiles(RuleSetFactory.class,
 							outputPath.getAbsolutePath(), filenames, libDirUrl);
 			if (foundRuleSetFactories != null) {

@@ -12,7 +12,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
-public class ScalaUtilTest {
+public class ScalaCompilerTest {
 
 	@Test
 	public void shouldRecompileScalaFiles() throws IOException {
@@ -24,7 +24,7 @@ public class ScalaUtilTest {
 
 		File outputDir = FileUtil.createTempDir("outputDir", "test");
 
-		boolean success = ScalaUtil.compileScalaFiles(
+		boolean success = new ScalaCompiler().compileScalaFiles(
 				new File[] { scalaSourceFile }, new File[] { library },
 				outputDir);
 

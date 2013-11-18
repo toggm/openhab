@@ -19,7 +19,7 @@ public class ClassloaderUtil {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static <C> Class<? extends C>[] loadImplementationsFromFiles(
+	public <C> Class<? extends C>[] loadImplementationsFromFiles(
 			Class<C> clazz, String basePath, String[] relativePathOfClass,
 			URL... libs) {
 

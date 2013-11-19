@@ -27,9 +27,10 @@ public class HammurabiAdapterTest {
 		StringItem stringItem = new StringItem("stringItem");
 		ScalaCompiler compiler = mock(ScalaCompiler.class);
 		ClassloaderUtil classloaderUtil = mock(ClassloaderUtil.class);
+		RuleEngineListener listener = mock(RuleEngineListener.class);
 
 		HammurabiAdapter adapter = new HammurabiAdapter("base", compiler,
-				classloaderUtil);
+				classloaderUtil, listener);
 		adapter.itemAdded(numberItem);
 		adapter.itemAdded(stringItem);
 
@@ -52,12 +53,13 @@ public class HammurabiAdapterTest {
 		RuleEngineExecutor engine = mock(RuleEngineExecutor.class);
 		ScalaCompiler compiler = mock(ScalaCompiler.class);
 		ClassloaderUtil classloaderUtil = mock(ClassloaderUtil.class);
+		RuleEngineListener listener = mock(RuleEngineListener.class);
 
 		LinkedList<RuleEngineExecutor> list = new LinkedList<RuleEngineExecutor>();
 		list.add(engine);
 
 		HammurabiAdapter adapter = new HammurabiAdapter("base", compiler,
-				classloaderUtil);
+				classloaderUtil, listener);
 		adapter.setRuleEngines(list);
 
 		// execute

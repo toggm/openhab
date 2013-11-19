@@ -76,7 +76,7 @@ public class HammurabiAdapter implements RuleEngineAdapter {
 	 * org.openhab.core.scala.internal.RuleEngineAdapter#itemAdded(org.openhab
 	 * .core.items.Item)
 	 */
-	public void itemAdded(Item item) {
+	public void itemAdded(Item item) {		
 		workingMemory.$plus(item);
 	}
 

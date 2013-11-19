@@ -7,5 +7,7 @@
 	<classpathentry kind="lib" path="lib/openhab-model.jar"/>
 	<classpathentry kind="lib" path="lib/hammurabi_2.11.0-M3-0.1.jar"/>
 	<classpathentry kind="lib" path="lib/openhab-library.jar"/>
+	<classpathentry kind="lib" path="lib/specs2_2.9.1-1.9.jar"/>
+	<classpathentry kind="lib" path="lib/mockito-all-1.9.5.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

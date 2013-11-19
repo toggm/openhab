@@ -3,4 +3,6 @@ name := "openhab-scala-lib"
 
 version := "1.0"
 
-libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.5"
+libraryDependencies ++= Seq(
+	"org.specs2" %% "specs2" % "1.9"  % "test"
+)

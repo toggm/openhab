@@ -12,13 +12,15 @@ class RuleEngineExecutor(val ruleEngine: RuleEngine) {
 
   def execOn(memory: WorkingMemory, listener: RuleEngineListener) = {
 
-    //clear static objects map before executing ruleengine
-    BusEvent.dock(Some(listener))
+	BusEvent.synchronized {
+		//clear static objects map before executing ruleengine
+		BusEvent.dock(Some(listener))
 
-    //eval rules
-    ruleEngine.execOn(memory)
+		//eval rules
+		ruleEngine.execOn(memory)
 
-    //return actual result of changeset
-    BusEvent.dock(None)
+		//return actual result of changeset
+		BusEvent.dock(None)
+	}
   }
 }

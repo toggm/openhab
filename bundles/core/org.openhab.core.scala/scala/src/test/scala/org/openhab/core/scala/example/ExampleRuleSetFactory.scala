@@ -10,6 +10,8 @@ import org.openhab.core.library.types.OnOffType
 import org.openhab.core.library.items.NumberItem
 import org.openhab.core.library.types.DecimalType
 import org.openhab.core.library.items.SwitchItem
+import scala.actors.Logger
+import hammurabi.util.Logger
 
 object ExampleRuleSetFactoryImpl extends RuleSetFactory {
   override def generateRuleSet(): Set[Rule] = {    
@@ -19,7 +21,7 @@ object ExampleRuleSetFactoryImpl extends RuleSetFactory {
         when {
           i.getState() == new DecimalType(1)
         } then {
-          send(OnOffType.ON) to i
+          send(OnOffType.ON) to i          
         }
       },
       rule("Rule2") let {

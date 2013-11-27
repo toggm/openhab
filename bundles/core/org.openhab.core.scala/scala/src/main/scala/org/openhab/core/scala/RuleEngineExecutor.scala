@@ -11,14 +11,29 @@ import org.openhab.core.scala.model.BusEvent
 class RuleEngineExecutor(val ruleEngine: RuleEngine) {
 
   def execOn(memory: WorkingMemory, listener: RuleEngineListener) = {
+    withListener(listener) {
+      ruleEngine.execOn(memory)
+    }
 
     //clear static objects map before executing ruleengine
-    BusEvent.dock(Some(listener))
+    //    BusEvent.dock(Some(listener))
 
     //eval rules
-    ruleEngine.execOn(memory)
+    //    ruleEngine.execOn(memory)
 
     //return actual result of changeset
-    BusEvent.dock(None)
+    //    BusEvent.dock(None)
+  }
+
+  def withListener(listener: RuleEngineListener)(block: => Unit) {
+    try {
+      BusEvent.synchronized {
+        BusEvent.dock(Some(listener))
+
+        block
+      }
+    } finally {
+      BusEvent.dock(None)
+    }
   }
 }

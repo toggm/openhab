@@ -12,7 +12,7 @@ import org.openhab.core.library.types.DecimalType
 import org.openhab.core.library.items.SwitchItem
 
 object ExampleRuleSetFactoryImpl extends RuleSetFactory {
-  override def generateRuleSet(): Set[Rule] = {    
+  override def generateRuleSet(): Set[Rule] = {
     Set(
       rule("Rule1") let {
         val i = kindOf[NumberItem] having (_.getName() == "item1")

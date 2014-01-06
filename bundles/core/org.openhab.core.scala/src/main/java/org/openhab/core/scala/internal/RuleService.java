@@ -46,7 +46,7 @@ public class RuleService extends AbstractActiveService implements
 		ManagedService, EventHandler, ItemRegistryChangeListener,
 		StateChangeListener, FileListener {
 
-	private static final String CONFIGURATION_BASE = "/configuration/scala";
+	private static final String CONFIGURATION_BASE = "/configurations/scala";
 
 	private long refreshInterval = 200;
 

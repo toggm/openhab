@@ -14,7 +14,7 @@ import scala.actors.Logger
 import hammurabi.util.Logger
 
 object ExampleRuleSetFactoryImpl extends RuleSetFactory {
-  override def generateRuleSet(): Set[Rule] = {    
+  override def generateRuleSet(): Set[Rule] = {
     Set(
       rule("Rule1") let {
         val i = kindOf[NumberItem] having (_.getName() == "item1")

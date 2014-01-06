@@ -29,12 +29,16 @@ object RuleEngineExecutorSpec extends Specification with Mockito {
       //execute rule 1ls
       item1.setState(new DecimalType(1))
       executor.execOn(wm, listener)
+      println("executed rule1")
+
       there was one(listener).send(item1, OnOffType.ON)
     }
     "Execute Rule2" in {
       //execute rule2
       item1.setState(new DecimalType(2))
       executor.execOn(wm, listener)
+      println("executed rule2")
+
       there was one(listener).updated(item1, new DecimalType(4))
 
     }
@@ -42,6 +46,8 @@ object RuleEngineExecutorSpec extends Specification with Mockito {
       //execute rule3
       item1.setState(new DecimalType(3))
       executor.execOn(wm, listener)
+      println("executed rule3")
+
       there was one(listener).send(item2, OnOffType.ON)
     }
   }

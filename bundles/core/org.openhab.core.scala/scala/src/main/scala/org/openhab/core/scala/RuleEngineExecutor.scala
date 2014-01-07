@@ -14,39 +14,20 @@ class RuleEngineExecutor(val ruleEngine: RuleEngine) {
     withListener(listener) {
       ruleEngine.execOn(memory)
     }
-
-<<<<<<< HEAD
-	BusEvent.synchronized {
-		//clear static objects map before executing ruleengine
-		BusEvent.dock(Some(listener))
-
-		//eval rules
-		ruleEngine.execOn(memory)
-
-		//return actual result of changeset
-		BusEvent.dock(None)
-	}
-=======
-    //clear static objects map before executing ruleengine
-    //    BusEvent.dock(Some(listener))
-
-    //eval rules
-    //    ruleEngine.execOn(memory)
-
-    //return actual result of changeset
-    //    BusEvent.dock(None)
   }
 
   def withListener(listener: RuleEngineListener)(block: => Unit) {
     try {
       BusEvent.synchronized {
+        //clear static objects map before executing ruleengine
         BusEvent.dock(Some(listener))
 
+        //eval rules
         block
       }
     } finally {
+      //return actual result of changeset
       BusEvent.dock(None)
     }
->>>>>>> b4ec47acf7ace5b92bb7f369595b9efe9fbeb6c1
   }
 }

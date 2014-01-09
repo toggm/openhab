@@ -31,6 +31,10 @@ import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.items.ItemRegistryChangeListener;
 import org.openhab.core.items.StateChangeListener;
+import org.openhab.core.scala.model.CommandEvent;
+import org.openhab.core.scala.model.ItemEvent;
+import org.openhab.core.scala.model.RuleEvent;
+import org.openhab.core.scala.model.StateEvent;
 import org.openhab.core.service.AbstractActiveService;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.EventType;
@@ -50,8 +54,8 @@ public class RuleService extends AbstractActiveService implements
 
 	private long refreshInterval = 200;
 
-	private List<Item> eventQueue = Collections
-			.synchronizedList(new ArrayList<Item>());
+	private List<RuleEvent> eventQueue = Collections
+			.synchronizedList(new ArrayList<RuleEvent>());
 
 	private DefaultFileMonitor fileMonitor;
 
@@ -165,20 +169,20 @@ public class RuleService extends AbstractActiveService implements
 	 * {@inheritDoc}
 	 */
 	public void stateChanged(Item item, State oldState, State newState) {
-		eventQueue.add(item);
+		eventQueue.add(new StateEvent(item, oldState, newState));
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	public void stateUpdated(Item item, State state) {
-		eventQueue.add(item);
+		eventQueue.add(new StateEvent(item, state, state));
 	}
 
 	public void receiveCommand(String itemName, Command command) {
 		try {
 			Item item = itemRegistry.getItem(itemName);
-			eventQueue.add(item);
+			eventQueue.add(new CommandEvent(item, command));
 		} catch (ItemNotFoundException e) {
 		}
 	}
@@ -190,13 +194,19 @@ public class RuleService extends AbstractActiveService implements
 	protected synchronized void execute() {
 		// remove all previous events from the session
 
-		ArrayList<Item> clonedQueue = new ArrayList<Item>(eventQueue);
+		ArrayList<RuleEvent> clonedQueue = new ArrayList<RuleEvent>(eventQueue);
 		eventQueue.clear();
 
 		// push modified items into workingmemory
-		for (Item item : clonedQueue) {
-			scalaRuleEngineAdapter.itemRemoved(item);
-			scalaRuleEngineAdapter.itemAdded(item);
+		for (RuleEvent event : clonedQueue) {
+			if (event instanceof ItemEvent) {
+				ItemEvent ievent = (ItemEvent) event;
+				scalaRuleEngineAdapter.itemRemoved(ievent.item());
+				scalaRuleEngineAdapter.itemAdded(ievent.item());
+			}
+
+			// notify about event
+			scalaRuleEngineAdapter.receivedEvent(event);
 		}
 
 		if (clonedQueue.size() > 0) {

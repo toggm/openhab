@@ -17,6 +17,7 @@ import org.openhab.core.items.Item;
 import org.openhab.core.scala.RuleEngineExecutor;
 import org.openhab.core.scala.RuleSetFactory;
 import org.openhab.core.scala.model.RuleEngineListener;
+import org.openhab.core.scala.model.RuleEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,8 +77,19 @@ public class HammurabiAdapter implements RuleEngineAdapter {
 	 * org.openhab.core.scala.internal.RuleEngineAdapter#itemAdded(org.openhab
 	 * .core.items.Item)
 	 */
-	public void itemAdded(Item item) {		
+	public void itemAdded(Item item) {
 		workingMemory.$plus(item);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.openhab.core.scala.internal.RuleEngineAdapter#receivedEvent(org.openhab
+	 * .core.scala.model.RuleEvent)
+	 */
+	public void receivedEvent(RuleEvent event) {
+		workingMemory.$plus(event);
 	}
 
 	/*

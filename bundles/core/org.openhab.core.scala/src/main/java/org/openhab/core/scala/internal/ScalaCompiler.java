@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import scala.collection.JavaConverters;
-import scala.collection.convert.Decorators.AsScala;
+import scala.collection.JavaConverters.AsScala;
 import scala.collection.mutable.Buffer;
 import scala.tools.nsc.Global;
 import scala.tools.nsc.Global.Run;

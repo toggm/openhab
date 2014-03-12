@@ -12,8 +12,13 @@ import scala.actors.Logger
 import hammurabi.util.Logger
 import org.openhab.core.scala.model._
 import org.openhab.core.scala.model.SystemEventType._
-import org.openhab.io.multimedia.actions.Audio._
 import org.openhab.core.library.types.IncreaseDecreaseType._
+import org.openhab.core.library.types.PercentType
+import org.openhab.io.multimedia.actions.Audio
+import org.openhab.io.multimedia.actions.Audio._
+import org.openhab.core.persistence.extensions.PersistenceExtensions._
+import org.joda.time.DateMidnight
+import org.joda.time.DateMidnight._
 
 object ExampleRuleSetFactoryImpl extends RuleSetFactory {
   
@@ -32,7 +37,7 @@ object ExampleRuleSetFactoryImpl extends RuleSetFactory {
 	if(percent>100) percent = 100
 	
 	updated(item).to(new DecimalType(percent))
-  }
+  } 
   
   override def generateRuleSet(): Set[Rule] = {
     Set(
@@ -71,6 +76,52 @@ object ExampleRuleSetFactoryImpl extends RuleSetFactory {
 				case 3 => playStream("http://edge.live.mp3.mdn.newmedia.nacamar.net/radioffh/livestream.mp3.m3u")
 	        }
         }
-      })
+      },
+      rule("Volume control") let {
+        val e = kindOf[CommandEvent] having (_.item.getName() == "Volume")
+        val cmd = e.cmd
+        then {
+          if (cmd.isInstanceOf[PercentType]) {
+	        setMasterVolume(cmd.asInstanceOf[PercentType])
+          }        
+          else {
+          cmd match {
+		      case INCREASE => increaseMasterVolume(20)
+		      case DECREASE => decreaseMasterVolume(20)	
+		    }
+        }
+        updated(e.item).to(new DecimalType(getMasterVolume() * 100))
+        }
+      },
+      rule("Say temperature on update") let {
+        val e = kindOf[UpdateEvent] having (_.item.getName() == "Weather_Temperature")
+        val state = e.state
+        then {
+          say("The temperature outside is " + state.format("%d") + " degrees celsius")
+        }
+      },
+      rule("Update max and min temperatures(1)") let {
+        val e = kindOf[StateEvent] having (_.item.getName() == "Weather_Temperature")
+        then {
+          updateWeatherChart()
+        }
+      },
+      rule("Update max and min temperatures(2)") let {
+        val e = any(kindOf[SystemEvent])
+        when (e.eventType == Startup)
+        then {
+          updateWeatherChart()
+        }
+      }
+      )
+   }
+  
+  def updateWeatherChart() = {
+    val item = kindOf[NumberItem] having (_.getName() == "Weather_Temperature")
+    val max = kindOf[NumberItem] having (_.getName() == "Weather_Temp_Max")
+    val min = kindOf[NumberItem] having (_.getName() == "Weather_Temp_Min")
+    
+    updated(max) to maximumSince(item, DateMidnight.now()).getState()
+    updated(min) to minimumSince(item, DateMidnight.now()).getState()
   }
 }

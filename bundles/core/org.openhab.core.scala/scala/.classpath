@@ -10,5 +10,8 @@
 	<classpathentry kind="lib" path="lib_unmanaged/specs2_2.10-2.3.4.jar"/>
 	<classpathentry kind="lib" path="lib/hammurabi_2.9.0-0.1.jar"/>
 	<classpathentry kind="lib" path="lib/org.openhab.io.multimedia-1.4.0-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/org.openhab.core.persistence-1.4.0-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib_unmanaged/joda-time-2.1.jar"/>
+	<classpathentry kind="lib" path="lib/org.openhab.core.scriptengine-1.4.0-SNAPSHOT.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

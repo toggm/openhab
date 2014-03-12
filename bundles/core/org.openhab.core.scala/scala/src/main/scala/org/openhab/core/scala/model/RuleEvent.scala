@@ -19,6 +19,10 @@ case class StateEvent(item:Item, oldState:State, newState:State) extends ItemEve
   
 }
 
+case class UpdateEvent(item:Item, state:State) extends ItemEvent {
+  
+}
+
 object SystemEventType extends Enumeration {
   type SystemEventType = Value
   val Startup, Shutdown = Value

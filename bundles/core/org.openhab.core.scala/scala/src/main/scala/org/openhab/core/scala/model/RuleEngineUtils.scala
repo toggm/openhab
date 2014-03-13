@@ -5,6 +5,11 @@ import org.openhab.core.types.State
 import org.openhab.core.types.Command
 import scala.collection.mutable.MutableList
 import scala.collection.mutable.ConcurrentMap
+import org.joda.time.DateTime
+import org.openhab.model.script.actions.Timer
+import org.openhab.model.script.actions.ScriptExecution._
+import org.eclipse.xtext.xbase.lib.Procedures.Procedure0;
+import org.openhab.model.script.actions.ScriptExecution
 
 object BusEvent {
 
@@ -25,6 +30,14 @@ object BusEvent {
   def dock(listener: Option[RuleEngineListener]) = {
     ruleEngineListener = listener
   }
+  
+  def createTimer(time:DateTime)(block:  => Any):Timer = {
+	  ScriptExecution.createTimer(time, new Procedure0() {
+	    override def apply() = {
+	      block
+	    }
+	  })
+	}
 }
 
 trait RuleEngineListener {

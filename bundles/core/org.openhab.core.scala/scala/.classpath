@@ -13,5 +13,7 @@
 	<classpathentry kind="lib" path="lib/org.openhab.core.persistence-1.4.0-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="lib_unmanaged/joda-time-2.1.jar"/>
 	<classpathentry kind="lib" path="lib/org.openhab.core.scriptengine-1.4.0-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/org.openhab.model.script-1.4.0-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/org.eclipse.xtext.xbase.lib_2.3.1.v201208210947.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

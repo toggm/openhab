@@ -5,6 +5,7 @@ import org.openhab.core.items.Item
 import org.openhab.core.scala.model.BusEvent._
 import org.openhab.core.types.Command
 import org.openhab.core.library.types.OnOffType
+import org.openhab.core.library.types.OnOffType._
 import org.openhab.core.library.items.NumberItem
 import org.openhab.core.library.types.DecimalType
 import org.openhab.core.library.items.SwitchItem
@@ -16,11 +17,12 @@ import org.openhab.core.library.types.IncreaseDecreaseType._
 import org.openhab.core.library.types.PercentType
 import org.openhab.io.multimedia.actions.Audio
 import org.openhab.io.multimedia.actions.Audio._
+import org.joda.time.DateTime._
 import org.openhab.core.persistence.extensions.PersistenceExtensions._
-import org.joda.time.DateMidnight
-import org.joda.time.DateMidnight._
+import org.openhab.model.script.actions.LogAction._
 
 object ExampleRuleSetFactoryImpl extends RuleSetFactory {
+  var timer = null
   
   def dimm(item: Item, cmd: Command) = {
     var percent = 0
@@ -101,27 +103,49 @@ object ExampleRuleSetFactoryImpl extends RuleSetFactory {
         }
       },
       rule("Update max and min temperatures(1)") let {
-        val e = kindOf[StateEvent] having (_.item.getName() == "Weather_Temperature")
+        val e1 = kindOf[StateEvent] having (_.item.getName() == "Weather_Temperature")
+        val e2 = any(kindOf[SystemEvent])
         then {
-          updateWeatherChart()
+          val item = kindOf[NumberItem] having (_.getName() == "Weather_Temperature")
+          val max = kindOf[NumberItem] having (_.getName() == "Weather_Temp_Max")
+          val min = kindOf[NumberItem] having (_.getName() == "Weather_Temp_Min")
+    
+          updated(max) to maximumSince(item, now).getState()
+          updated(min) to minimumSince(item, now).getState()
         }
       },
-      rule("Update max and min temperatures(2)") let {
-        val e = any(kindOf[SystemEvent])
-        when (e.eventType == Startup)
+      rule("persistence demo 2") let {
+        val e = kindOf[CommandEvent] having (_.item.getName() == "DemoSwitch")
+        when {
+          !changedSince(e.item, now.minusSeconds(5))          
+        }
         then {
-          updateWeatherChart()
+        	logInfo("Persistence Demo", "You did not press this button during the last 5 seconds!")
+        }
+      },
+      rule("Timer Demo") let {
+        val e = kindOf[CommandEvent] having (_.item.getName() == "Light_GF_Corridor_Ceiling")
+        then {          
+          e.cmd match {
+            case ON =>
+              if(timer==null) {
+            	  // first ON command, so create a timer to turn the light off again
+            	  timer = createTimer(now.plusSeconds(10)) {
+            		  sendCommand(Light_GF_Corridor_Ceiling, OFF)
+            	  }
+              } else {
+            	  // 	subsequent ON command, so reschedule the existing timer
+            	  timer.reschedule(now.plusSeconds(10))
+              }
+            case OFF =>
+              // remove any previously scheduled timer
+            	if(timer!=null) {
+            		timer.cancel
+            		timer = null
+            	}
+          }
         }
       }
       )
    }
-  
-  def updateWeatherChart() = {
-    val item = kindOf[NumberItem] having (_.getName() == "Weather_Temperature")
-    val max = kindOf[NumberItem] having (_.getName() == "Weather_Temp_Max")
-    val min = kindOf[NumberItem] having (_.getName() == "Weather_Temp_Min")
-    
-    updated(max) to maximumSince(item, DateMidnight.now()).getState()
-    updated(min) to minimumSince(item, DateMidnight.now()).getState()
-  }
 }
